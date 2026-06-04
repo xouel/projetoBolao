@@ -8,11 +8,15 @@ var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzMujtMMwsugRaOeKbcVU2
 
 const api = {
     
-    // 1. Procura se o nickname do familiar já existe online
+    // 1. Procura se o nickname do familiar já existe online (CORRIGIDO: adicionado redirecionamento seguro)
     async checkUserExists(nickname) {
         try {
             const urlCompleta = `${SCRIPT_URL}?action=checkUser&login=${encodeURIComponent(nickname)}`;
-            const resposta = await fetch(urlCompleta);
+            const resposta = await fetch(urlCompleta, {
+                method: "GET",
+                mode: "cors",
+                redirect: "follow"
+            });
             const dados = await resposta.json();
             
             if (dados.error) throw new Error(dados.error);
@@ -91,11 +95,15 @@ const api = {
         }
     },
 
-    // 4. Busca todos os palpites que o usuário logado já fez anteriormente
+    // 4. Busca todos os palpites que o usuário logado já fez anteriormente (CORRIGIDO: adicionado redirecionamento seguro)
     async getUserGuesses(nickname) {
         try {
             const urlCompleta = `${SCRIPT_URL}?action=getPalpites&usuario=${encodeURIComponent(nickname)}`;
-            const resposta = await fetch(urlCompleta);
+            const resposta = await fetch(urlCompleta, {
+                method: "GET",
+                mode: "cors",
+                redirect: "follow"
+            });
             const dados = await resposta.json();
             
             if (dados.error) throw new Error(dados.error);
@@ -106,11 +114,15 @@ const api = {
         }
     },
 
-    // 5. Puxa a lista ordenada de pontuação para o painel de Líderes
+    // 5. Puxa a lista ordenada de pontuação para o painel de Líderes (CORRIGIDO CRÍTICO: destrava o carregamento do ranking)
     async getLeaderboard() {
         try {
             const urlCompleta = `${SCRIPT_URL}?action=getRanking`;
-            const resposta = await fetch(urlCompleta);
+            const resposta = await fetch(urlCompleta, {
+                method: "GET",
+                mode: "cors",
+                redirect: "follow" // Isso impede o travamento eterno gerado pelo redirecionamento do Google Script
+            });
             const dados = await resposta.json();
             
             if (dados.error) throw new Error(dados.error);

@@ -46,24 +46,37 @@ const leaderboard = {
             else if (position === 3) { medal = "🥉"; rowClass += " rank-third"; }
             else { medal = `<span class="rank-number">${position}º</span>`; }
 
+            // CORREÇÃO CRÍTICA: Mapeamento seguro de propriedades (Maiúsculas vs Minúsculas)
+            const nomeUser = user.Nome || user.nome || user.fullname || user.name || "Participante";
+            const avatarUser = user.Avatar || user.avatar || "⚽";
+            const loginUser = user.Login || user.login || user.nickname || "";
+            const acertosUser = user.Acertos !== undefined ? user.Acertos : (user.acertos || 0);
+            const pontosUser = user.PontosTotais !== undefined ? user.PontosTotais : (user.pontosTotais || user.pontos || 0);
+
             // Destaca o usuário logado para ele se achar rápido na lista
             const currentUser = JSON.parse(localStorage.getItem("bolao_user_2026"));
-            if (currentUser && currentUser.Login === user.Login) {
-                rowClass += " rank-me";
+            if (currentUser) {
+                const myLogin = currentUser.Login || currentUser.login || currentUser.nickname || "";
+                if (myLogin && myLogin.toLowerCase() === loginUser.toLowerCase()) {
+                    rowClass += " rank-me";
+                }
             }
+
+            // Pega o primeiro nome com segurança para exibição fluida
+            const primeiroNome = nomeUser.trim().split(" ")[0];
 
             // Constrói a linha em HTML
             const row = document.createElement("div");
             row.className = rowClass;
             row.innerHTML = `
                 <div class="rank-pos">${medal}</div>
-                <div class="rank-avatar">${user.Avatar}</div>
+                <div class="rank-avatar">${avatarUser}</div>
                 <div class="rank-info">
-                    <span class="rank-name">${user.Nome.split(" ")[0]}</span>
-                    <span class="rank-exacts">${user.Acertos} placares exatos</span>
+                    <span class="rank-name">${primeiroNome}</span>
+                    <span class="rank-exacts">${acertosUser} placares exatos</span>
                 </div>
                 <div class="rank-score">
-                    <strong>${user.PontosTotais}</strong> PTS
+                    <strong>${pontosUser}</strong> PTS
                 </div>
             `;
             container.appendChild(row);
@@ -74,30 +87,35 @@ const leaderboard = {
     renderBrazilExpert(rankingData, specialCard) {
         if (!specialCard) return;
 
-        // Encontra o maior valor de "PontosBrasil"
         let maxBRPoints = -1;
         let expertUser = null;
 
         rankingData.forEach(user => {
-            if (user.PontosBrasil > maxBRPoints) {
-                maxBRPoints = user.PontosBrasil;
+            // Suporta letras maiúsculas ou minúsculas para a métrica do Brasil
+            const pontosBR = user.PontosBrasil !== undefined ? user.PontosBrasil : (user.pontosBrasil || 0);
+            
+            if (pontosBR > maxBRPoints) {
+                maxBRPoints = pontosBR;
                 expertUser = user;
             }
         });
 
-        // Se ninguém tem ponto do Brasil ainda, oculta o card
-        if (!expertUser || maxBRPoints === 0) {
+        // Se ninguém tem ponto do Brasil ainda ou a lista está zerada, esconde o card numa boa
+        if (!expertUser || maxBRPoints <= 0) {
             specialCard.classList.add("hidden");
             return;
         }
+
+        const nomeExpert = expertUser.Nome || expertUser.nome || expertUser.fullname || "Participante";
+        const avatarExpert = expertUser.Avatar || expertUser.avatar || "⚽";
 
         specialCard.classList.remove("hidden");
         specialCard.innerHTML = `
             <div class="expert-badge">🇧🇷 Especialista da Seleção</div>
             <div class="expert-content">
-                <span class="expert-avatar">${expertUser.Avatar}</span>
+                <span class="expert-avatar">${avatarExpert}</span>
                 <div class="expert-details">
-                    <span class="expert-name">${expertUser.Nome}</span>
+                    <span class="expert-name">${nomeExpert}</span>
                     <span class="expert-pts">${maxBRPoints} Pontos nos jogos do Brasil!</span>
                 </div>
             </div>
