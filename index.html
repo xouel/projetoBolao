@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bolão Copa 2026 🏆</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <canvas id="confetti-canvas"></canvas>
+
+    <div id="app-container">
+        
+        <header id="main-header" class="hidden">
+            <div class="header-brand">
+                <span class="logo-emoji">🏆</span>
+                <div>
+                    <h1>Bolão Copa '26</h1>
+                    <span class="sub-logo">Família & Amigos</span>
+                </div>
+            </div>
+            <div id="header-user-status" onclick="app.switchView('profile')">
+                <div class="user-avatar-mini" id="header-avatar">⚽</div>
+                <div class="user-info-mini">
+                    <span id="header-username">Carregando...</span>
+                    <span id="header-points" class="badge-pts">0 PTS</span>
+                </div>
+            </div>
+        </header>
+
+        <main id="main-content">
+
+            <section id="view-login" class="view-section">
+                <div class="login-card">
+                    <div class="login-hero">
+                        <span class="trophy-icon">🏆</span>
+                        <h2>Bolão Família Celestino Copa 26'</h2>
+                        <p>Faça seus palpites, junte a família e dispute o topo do ranking!</p>
+                    </div>
+                    
+                    <form id="login-form">
+                        <div class="input-group">
+                            <label for="login-nickname">Seu Apelido/Nickname</label>
+                            <input type="text" id="login-nickname" placeholder="ex: joao_gols" required autocomplete="off">
+                            <small>Use apenas letras, números ou underline.</small>
+                        </div>
+
+                        <div class="avatar-selector-container">
+                            <label>Escolha seu Avatar</label>
+                            <div class="avatar-grid">
+                                <div class="avatar-option active" data-avatar="⚽">⚽</div>
+                                <div class="avatar-option" data-avatar="🏆">🏆</div>
+                                <div class="avatar-option" data-avatar="🦁">🦁</div>
+                                <div class="avatar-option" data-avatar="🎨">🎨</div>
+                                <div class="avatar-option" data-avatar="⚡">⚡</div>
+                                <div class="avatar-option" data-avatar="😎">😎</div>
+                                <div class="avatar-option" data-avatar="👑">👑</div>
+                                <div class="avatar-option" data-avatar="🚀">🚀</div>
+                            </div>
+                        </div>
+
+                        <div id="name-field-group" class="input-group hidden">
+                            <label for="login-fullname">Seu Nome Completo</label>
+                            <input type="text" id="login-fullname" placeholder="ex: João Silva">
+                        </div>
+
+                        <button type="submit" id="btn-login" class="btn-primary">
+                            <span>Entrar no Bolão</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </form>
+                    <div id="login-message" class="error-message hidden"></div>
+                </div>
+            </section>
+
+            <section id="view-home" class="view-section hidden">
+                <div class="welcome-banner">
+                    <div class="banner-text">
+                        <h2 id="welcome-title">Olá, Jogador! 👋</h2>
+                        <p>A Copa dos EUA, Canadá e México espera pelos seus palpites.</p>
+                    </div>
+                    <div class="banner-badge">
+                        <i class="fa-solid fa-bolt"></i>
+                        <span id="banner-efficiency">0% Aproveitamento</span>
+                    </div>
+                </div>
+
+                <div class="quick-stats-grid">
+                    <div class="stat-box">
+                        <i class="fa-solid fa-chart-line color-p"></i>
+                        <span class="stat-value" id="stat-user-rank">-º</span>
+                        <span class="stat-label">Sua Posição</span>
+                    </div>
+                    <div class="stat-box">
+                        <i class="fa-solid fa-star color-a"></i>
+                        <span class="stat-value" id="stat-user-points">0</span>
+                        <span class="stat-label">Pontos Totais</span>
+                    </div>
+                    <div class="stat-box">
+                        <i class="fa-solid fa-bullseye color-s"></i>
+                        <span class="stat-value" id="stat-user-exact">0</span>
+                        <span class="stat-label">Placares Exatos</span>
+                    </div>
+                </div>
+
+                <div class="section-header">
+                    <h3>🔥 Próximos Jogos em Destaque</h3>
+                    <button class="btn-text" onclick="app.switchView('guesses')">Ver todos</button>
+                </div>
+                <div id="home-featured-matches" class="matches-list-container">
+                    <p class="loading-placeholder">Carregando próximas partidas...</p>
+                </div>
+
+                <div class="section-header">
+                    <h3>📊 Líderes do Momento</h3>
+                    <button class="btn-text" onclick="app.switchView('ranking')">Ver completo</button>
+                </div>
+                <div class="quick-ranking-card">
+                    <div id="home-quick-ranking" class="quick-ranking-list"></div>
+                </div>
+            </section>
+
+            <section id="view-guesses" class="view-section hidden">
+                <div class="phase-navigation-bar">
+                    <button class="guess-tab-btn active" data-phase="Grupos">Fase de Grupos</button>
+                    <button class="guess-tab-btn" data-phase="Mata-mata">Mata-Mata</button>
+                </div>
+
+                <div id="subfilter-groups-container" class="sub-filter-scroll"></div>
+                
+                <div id="subfilter-playoffs-container" class="sub-filter-scroll hidden">
+                    <button class="sub-filter-btn active" data-subphase="R32">Dezesseis-avos (32)</button>
+                    <button class="sub-filter-btn" data-subphase="R16">Oitavas</button>
+                    <button class="sub-filter-btn" data-subphase="QF">Quartas</button>
+                    <button class="sub-filter-btn" data-subphase="SF">Semifinais</button>
+                    <button class="sub-filter-btn" data-subphase="F">Final</button>
+                </div>
+
+                <div id="container-jogos-palpites" class="matches-grid"></div>
+            </section>
+
+            <section id="view-standings" class="view-section hidden">
+                <div class="section-header" style="flex-direction: column; align-items: flex-start; gap: 4px; margin-bottom: 16px;">
+                    <h3 style="font-size: 1.25rem;">🏆 Classificação dos Grupos</h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">
+                        Atualizada automaticamente em tempo real com critérios de desempate oficiais da FIFA.
+                    </p>
+                </div>
+
+                <div id="tabelas-grupos-container">
+                    <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+                        <p>Carregando estrutura dos grupos...</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-ranking" class="view-section hidden">
+                <div class="ranking-tab-container">
+                    <button class="ranking-tab active" data-ranking-type="general">
+                        <i class="fa-solid fa-globe"></i> Ranking Geral
+                    </button>
+                </div>
+
+                <div id="special-expert-card" class="hidden"></div>
+
+                <div class="ranking-leaderboard-card">
+                    <div class="leaderboard-header">
+                        <span class="col-pos">Pos</span>
+                        <span class="col-user">Participante</span>
+                        <span class="col-exact text-center">Acertos</span>
+                        <span class="col-pts text-right">Pts</span>
+                    </div>
+                    
+                    <div id="ranking-list-container" class="leaderboard-rows">
+                        <p class="loading-placeholder">Buscando dados da nuvem...</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-profile" class="view-section hidden">
+                <div class="profile-card-premium">
+                    <div class="profile-main-info">
+                        <div class="profile-avatar-large" id="profile-display-avatar">⚽</div>
+                        <h2 id="profile-display-name">Nome do Usuário</h2>
+                        <span id="profile-display-nickname" class="profile-nickname-badge">@nickname</span>
+                    </div>
+
+                    <div class="profile-progress-container">
+                        <div class="progress-labels">
+                            <span>Progresso de Palpites</span>
+                            <strong id="profile-progress-text">0/104 Jogos</strong>
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div id="profile-progress-fill" class="progress-bar-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-metrics-grid">
+                    <div class="metric-card">
+                        <span class="metric-num" id="profile-metric-total-pts">0</span>
+                        <span class="metric-desc">Pontos Ganhos</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-num" id="profile-metric-exact">0</span>
+                        <span class="metric-desc">Placares Exatos (5pts)</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-num" id="profile-metric-outcome">0</span>
+                        <span class="metric-desc">Acertos Vencedor (3pts)</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-num" id="profile-metric-br-pts">0</span>
+                        <span class="metric-desc">Pontos em Jogos do BR</span>
+                    </div>
+                </div>
+
+                <div class="section-header">
+                    <h3>🏅 Suas Conquistas</h3>
+                </div>
+                <div id="profile-achievements-grid" class="achievements-grid">
+                    <div class="achievement-item locked" id="badge-first-guess">
+                        <div class="badge-icon">🔮</div>
+                        <h4>Primeiro Palpite</h4>
+                        <p>Deu o primeiro chute no sistema.</p>
+                    </div>
+                    <div class="achievement-item locked" id="badge-sniper">
+                        <div class="badge-icon">🎯</div>
+                        <h4>Precisão Cirúrgica</h4>
+                        <p>Acertou pelo menos 1 placar exato.</p>
+                    </div>
+                    <div class="achievement-item locked" id="badge-canarinho">
+                        <div class="badge-icon">🐤</div>
+                        <h4>Coração Verde-Amarelo</h4>
+                        <p>Pontuou em um jogo do Brasil.</p>
+                    </div>
+                    <div class="achievement-item locked" id="badge-marathon">
+                        <div class="badge-icon">🏃‍♂️</div>
+                        <h4>Palpiteiro Profissional</h4>
+                        <p>Apostou em todos os jogos da Fase de Grupos.</p>
+                    </div>
+                </div>
+
+                <button id="btn-logout" class="btn-secondary">
+                    <i class="fa-solid fa-right-from-bracket"></i> Sair da Conta
+                </button>
+            </section>
+
+            <section id="view-admin" class="view-section hidden">
+                <div class="view-title-container">
+                    <h2>⚙️ Painel de Controle (Admin)</h2>
+                    <p>Gerencie placares reais, encerramento de rodadas e sincronização total.</p>
+                </div>
+
+                <div id="admin-auth-box" class="admin-card">
+                    <h3><i class="fa-solid fa-lock"></i> Acesso Restrito</h3>
+                    <div class="input-group">
+                        <label for="admin-password">Senha do Administrador</label>
+                        <input type="password" id="admin-password" placeholder="Digite a senha de acesso">
+                    </div>
+                    <button id="btn-auth-admin" class="btn-primary">Verificar Credenciais</button>
+                    <div id="admin-auth-message" class="error-message hidden"></div>
+                </div>
+
+                <div id="admin-dashboard-area" class="hidden">
+                    <div class="admin-tabs">
+                        <button class="admin-tab-btn active" data-admin-target="admin-matches">Inserir Resultados</button>
+                        <button class="admin-tab-btn" data-admin-target="admin-actions">Ações de Sistema</button>
+                    </div>
+
+                    <div id="admin-matches" class="admin-subview">
+                        <div class="admin-filter-bar">
+                            <select id="admin-phase-select">
+                                <option value="groups">Fase de Grupos</option>
+                                <option value="R32">Rodada de 32</option>
+                                <option value="R16">Oitavas de Final</option>
+                                <option value="QF">Quartas de Final</option>
+                                <option value="SF">Semifinais</option>
+                                <option value="F">Final</option>
+                            </select>
+                        </div>
+                        <div id="admin-matches-list" class="matches-grid"></div>
+                    </div>
+
+                    <div id="admin-actions" class="admin-subview hidden">
+                        <div class="danger-zone-box">
+                            <h3>⚠️ Zona de Perigo Crítico</h3>
+                            <p>Estas ações alteram de forma permanente o banco de dados online no Google Sheets.</p>
+                            
+                            <div class="admin-action-row">
+                                <div>
+                                    <strong>Forçar Recalcular Ranking</strong>
+                                    <p>Sincroniza todos os pontos se houver alguma inconsistência.</p>
+                                </div>
+                                <button id="btn-admin-recalc" class="btn-action">Recalcular</button>
+                            </div>
+                            
+                            <div class="admin-action-row">
+                                <div>
+                                    <strong>Resetar Todos os Palpites</strong>
+                                    <p>Apaga permanentemente os palpites dados por todos os usuários.</p>
+                                </div>
+                                <button id="btn-admin-reset-guesses" class="btn-danger">Resetar Palpites</button>
+                            </div>
+
+                            <div class="admin-action-row">
+                                <div>
+                                    <strong>Limpar Todo o Sistema</strong>
+                                    <p>Apaga usuários, rankings e zera a tabela de resultados oficiais.</p>
+                                </div>
+                                <button id="btn-admin-wipe-all" class="btn-danger">Limpar Tudo</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+         </main>
+
+        <nav id="bottom-nav" class="hidden">
+            <button class="nav-item active" data-target="home">
+                <i class="fa-solid fa-house"></i>
+                <span>Início</span>
+            </button>
+            <button class="nav-item" data-target="guesses">
+                <i class="fa-solid fa-clipboard-list"></i>
+                <span>Palpites</span>
+            </button>
+            <button class="nav-item" data-target="standings">
+                <i class="fa-solid fa-table-list"></i>
+                <span>Grupos</span>
+            </button>
+            <button class="nav-item" data-target="ranking">
+                <i class="fa-solid fa-ranking-star"></i>
+                <span>Ranking</span>
+            </button>
+            <button class="nav-item" data-target="profile">
+                <i class="fa-solid fa-user"></i>
+                <span>Perfil</span>
+            </button>
+            <button class="nav-item" data-target="admin" id="nav-item-admin">
+                <i class="fa-solid fa-gear"></i>
+                <span>Admin</span>
+            </button>
+        </nav>
+    </div>
+
+    <div id="app-modal" class="modal-overlay hidden">
+        <div class="modal-box">
+            <div id="modal-icon">ℹ️</div>
+            <h3 id="modal-title">Título do Alerta</h3>
+            <p id="modal-text">Texto descritivo com orientações.</p>
+            <button id="modal-close-btn" class="btn-primary">Entendido</button>
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="api.js"></script>
+    <script src="standings.js"></script>
+    <script src="admin.js"></script>
+    <script src="app.js"></script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registrado com sucesso!', reg.scope))
+                    .catch(err => console.log('Falha ao registrar o Service Worker:', err));
+            });
+        }
+    </script>
+</body>
+</html>
