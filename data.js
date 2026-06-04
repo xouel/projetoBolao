@@ -13,12 +13,12 @@ const dataMatches = [
     { IDJogo: "J-A6", TimeCasa: "África do Sul", TimeFora: "Coreia do Sul", Grupo: "A", Fase: "Grupos" },
 
     // --- GRUPO B ---
-    { IDJogo: "J-B1", TimeCasa: "Canadá", TimeFora: "Básnia", Grupo: "B", Fase: "Grupos" },
+    { IDJogo: "J-B1", TimeCasa: "Canadá", TimeFora: "Bosnia", Grupo: "B", Fase: "Grupos" },
     { IDJogo: "J-B2", TimeCasa: "Catar", TimeFora: "Suíça", Grupo: "B", Fase: "Grupos" },
     { IDJogo: "J-B3", TimeCasa: "Canadá", TimeFora: "Catar", Grupo: "B", Fase: "Grupos" },
-    { IDJogo: "J-B4", TimeCasa: "Básnia", TimeFora: "Suíça", Grupo: "B", Fase: "Grupos" },
+    { IDJogo: "J-B4", TimeCasa: "Bosnia", TimeFora: "Suíça", Grupo: "B", Fase: "Grupos" },
     { IDJogo: "J-B5", TimeCasa: "Suíça", TimeFora: "Canadá", Grupo: "B", Fase: "Grupos" },
-    { IDJogo: "J-B6", TimeCasa: "Básnia", TimeFora: "Catar", Grupo: "B", Fase: "Grupos" },
+    { IDJogo: "J-B6", TimeCasa: "Bosnia", TimeFora: "Catar", Grupo: "B", Fase: "Grupos" },
 
     // --- GRUPO C (Grupo do Brasil) ---
     { IDJogo: "J-C1", TimeCasa: "Brasil", TimeFora: "Marrocos", Grupo: "C", Fase: "Grupos" },
@@ -70,11 +70,11 @@ const dataMatches = [
 
     // --- GRUPO I ---
     { IDJogo: "J-I1", TimeCasa: "França", TimeFora: "Senegal", Grupo: "I", Fase: "Grupos" },
-    { IDJogo: "J-I2", TimeCasa: "Bolívia/Iraque", TimeFora: "Noruega", Grupo: "I", Fase: "Grupos" },
-    { IDJogo: "J-I3", TimeCasa: "França", TimeFora: "Bolívia/Iraque", Grupo: "I", Fase: "Grupos" },
+    { IDJogo: "J-I2", TimeCasa: "Iraque", TimeFora: "Noruega", Grupo: "I", Fase: "Grupos" },
+    { IDJogo: "J-I3", TimeCasa: "França", TimeFora: "Iraque", Grupo: "I", Fase: "Grupos" },
     { IDJogo: "J-I4", TimeCasa: "Senegal", TimeFora: "Noruega", Grupo: "I", Fase: "Grupos" },
     { IDJogo: "J-I5", TimeCasa: "Noruega", TimeFora: "França", Grupo: "I", Fase: "Grupos" },
-    { IDJogo: "J-I6", TimeCasa: "Senegal", TimeFora: "Bolívia/Iraque", Grupo: "I", Fase: "Grupos" },
+    { IDJogo: "J-I6", TimeCasa: "Senegal", TimeFora: "Iraque", Grupo: "I", Fase: "Grupos" },
 
     // --- GRUPO J ---
     { IDJogo: "J-J1", TimeCasa: "Argentina", TimeFora: "Argélia", Grupo: "J", Fase: "Grupos" },
@@ -111,7 +111,7 @@ const dataFlags = {
     "Holanda": "🇳🇱", "Japão": "🇯🇵", "Suécia": "🇸🇪", "Tunísia": "🇹🇳",
     "Bélgica": "🇧🇪", "Egito": "🇪🇬", "Irã": "🇮🇷", "Nova Zelândia": "🇳🇿",
     "Espanha": "🇪🇸", "Cabo Verde": "🇨🇻", "Arábia Saudita": "🇸🇦", "Uruguai": "🇺🇾",
-    "França": "🇫🇷", "Senegal": "🇸🇳", "Bolívia/Iraque": "🏴", "Noruega": "🇳🇴",
+    "França": "🇫🇷", "Senegal": "🇸🇳", "Iraque": "🏴", "Noruega": "🇳🇴",
     "Argentina": "🇦🇷", "Argélia": "🇩🇿", "Áustria": "🇦🇹", "Jordânia": "🇯🇴",
     "Portugal": "🇵🇹", "RD Congo": "🇨🇩", "Uzbequistão": "🇺🇿", "Colômbia": "🇨🇴",
     "Inglaterra": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Croácia": "🇭🇷", "Gana": "🇬🇭", "Panamá": "🇵🇦"
