@@ -332,12 +332,8 @@ const app = {
         }
 
         if (viewId === "ranking") {
-            if (typeof leaderboard !== "undefined" && typeof leaderboard.fetchAndRender === "function") {
-                leaderboard.fetchAndRender();
-            } else if (typeof ranking !== "undefined" && typeof ranking.fetchAndRender === "function") {
-                ranking.fetchAndRender();
-            }
-        }
+    app.renderRanking();
+}
     },
 
     // 8. Renderiza os jogos filtrando corretamente por Fase e por Subfase do Mata-mata
@@ -444,7 +440,74 @@ const app = {
             this.showModal("Erro", "Ocorreu uma falha ao tentar salvar o seu palpite online.", "❌");
         }
     },
+// 10. Busca e renderiza o ranking completo de todos os participantes
+async renderRanking() {
+    const container = document.getElementById("ranking-list-container");
+    if (!container) return;
 
+    container.innerHTML = `<p class="loading-placeholder">Buscando dados da nuvem...</p>`;
+
+    try {
+        const ranking = await api.getLeaderboard();
+
+        if (!ranking || ranking.length === 0) {
+            container.innerHTML = `<p class="loading-placeholder">Nenhum participante encontrado ainda.</p>`;
+            return;
+        }
+
+        // Ordena por pontos (maior primeiro), com acertos como desempate
+        const ordenado = ranking.sort((a, b) => {
+            const ptA = parseInt(a.PontosTotais || a.pontosTotais || 0);
+            const ptB = parseInt(b.PontosTotais || b.pontosTotais || 0);
+            const acA = parseInt(a.Acertos || a.acertos || 0);
+            const acB = parseInt(b.Acertos || b.acertos || 0);
+            if (ptB !== ptA) return ptB - ptA;
+            return acB - acA;
+        });
+
+        container.innerHTML = "";
+
+        ordenado.forEach((user, index) => {
+            const pos      = index + 1;
+            const nome     = user.Nome || user.nome || user.fullname || "Jogador";
+            const login    = user.Login || user.login || "";
+            const avatar   = user.Avatar || user.avatar || "⚽";
+            const pontos   = parseInt(user.PontosTotais || user.pontosTotais || 0);
+            const acertos  = parseInt(user.Acertos || user.acertos || 0);
+
+            // Medalha para os 3 primeiros
+            const medalhas = ["🥇", "🥈", "🥉"];
+            const posLabel = pos <= 3 ? medalhas[pos - 1] : `${pos}º`;
+
+            // Destaca o usuário logado
+            const isCurrentUser = login === (appState.currentUser?.Login || appState.currentUser?.login || "");
+            const destaque = isCurrentUser ? " leaderboard-row--highlight" : "";
+
+            const row = document.createElement("div");
+            row.className = `leaderboard-row${destaque}`;
+            row.innerHTML = `
+                <span class="col-pos">${posLabel}</span>
+                <span class="col-user">
+                    <span class="user-avatar-mini">${avatar}</span>
+                    <span class="user-name-rank">${nome}</span>
+                </span>
+                <span class="col-exact text-center">${acertos}</span>
+                <span class="col-pts text-right"><strong>${pontos}</strong> pts</span>
+            `;
+            container.appendChild(row);
+        });
+
+        // Atualiza a posição do usuário logado na tela Home
+        const currentLogin = appState.currentUser?.Login || appState.currentUser?.login || "";
+        const myPos = ordenado.findIndex(u => (u.Login || u.login) === currentLogin) + 1;
+        const statRank = document.getElementById("stat-user-rank");
+        if (statRank && myPos > 0) statRank.innerText = `${myPos}º`;
+
+    } catch (err) {
+        console.error("Erro ao renderizar ranking:", err);
+        container.innerHTML = `<p class="loading-placeholder">Erro ao carregar ranking. Tente novamente.</p>`;
+    }
+},
     // 10. Lógica de Desconexão (Sair da Conta)
     logout() {
         localStorage.removeItem("bolao_user_2026");
