@@ -1,104 +1,126 @@
 /**
  * STANDINGS.JS - Cálculo e Renderização da Classificação dos Grupos
+ * CORRIGIDO: Busca resultados reais do Google Sheets em vez de usar dataMatches local.
  */
 const standings = {
-    
-    fetchAndRender() {
+
+    async fetchAndRender() {
         const container = document.getElementById("tabelas-grupos-container");
         if (!container) return;
 
-        // Mensagem de carregamento/processamento
         container.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--text-muted);">
             <i class="fa-solid fa-spinner fa-spin"></i> Calculando classificações em tempo real...
         </div>`;
 
-        // 1. Objeto temporário para acumular as estatísticas de cada time
+        try {
+            // ✅ FIX 1: Busca os jogos COM resultados reais do Google Sheets
+            const url = `${SCRIPT_URL}?action=getResultadosReais`;
+            const resposta = await fetch(url, { method: "GET", mode: "cors", redirect: "follow" });
+            const dados = await resposta.json();
+
+            // Se a planilha estiver vazia ou der erro, cai no fallback local
+            const jogosOnline = (dados.success && Array.isArray(dados.jogos) && dados.jogos.length > 0)
+                ? dados.jogos
+                : null;
+
+            // Fallback: usa dataMatches local se não tiver dados online ainda
+            const fonteDados = jogosOnline || (typeof dataMatches !== "undefined" ? dataMatches : []);
+
+            if (fonteDados.length === 0) {
+                container.innerHTML = `<p style="text-align:center; padding:20px;">Nenhum dado de jogo encontrado.</p>`;
+                return;
+            }
+
+            this.computeAndRender(fonteDados, container);
+
+        } catch (err) {
+            console.error("Erro ao buscar standings:", err);
+            // Em caso de falha na rede, usa os dados locais
+            if (typeof dataMatches !== "undefined") {
+                this.computeAndRender(dataMatches, container);
+            } else {
+                container.innerHTML = `<p style="text-align:center; padding:20px; color: #ef4444;">Erro ao carregar classificação.</p>`;
+            }
+        }
+    },
+
+    computeAndRender(jogos, container) {
         const tabelaGeral = {};
 
-        // Verificação de segurança caso dataMatches ainda não tenha sido carregado
-        if (typeof dataMatches === "undefined" || !Array.isArray(dataMatches)) {
-            container.innerHTML = `<p style="text-align:center; padding:20px;">Nenhum dado de jogo encontrado.</p>`;
-            return;
-        }
+        jogos.forEach(jogo => {
+            const fase      = jogo.Fase      || jogo.fase;
+            const grupo     = jogo.Grupo     || jogo.grupo;
+            const timeCasa  = jogo.TimeCasa  || jogo.timeCasa;
+            const timeFora  = jogo.TimeFora  || jogo.timeFora;
 
-        // 2. Processa cada jogo mapeado no seu banco de dados
-        dataMatches.forEach(jogo => {
-            // Pegamos as propriedades tratando variações de maiúsculas/minúsculas comuns em APIs
-            const fase = jogo.Fase || jogo.fase;
-            const grupo = jogo.Grupo || jogo.grupo;
-            const timeCasa = jogo.TimeCasa || jogo.timeCasa;
-            const timeFora = jogo.TimeFora || jogo.timeFora;
-            
-            // IMPORTANTE: Altere 'GolCasaRes' e 'GolForaRes' para os nomes exatos das colunas do seu banco (ex: gol_casa_oficial, etc)
-            const gCasaRaw = jogo.GolCasaRes !== undefined ? jogo.GolCasaRes : jogo.golCasaRes;
-            const gForaRaw = jogo.GolForaRes !== undefined ? jogo.GolForaRes : jogo.golForaRes;
+            // ✅ FIX 2: Lê GolCasaReal/GolForaReal (nome correto do banco),
+            // com fallback para GolCasaRes/GolForaRes por compatibilidade
+            const gCasaRaw = jogo.GolCasaReal !== undefined ? jogo.GolCasaReal
+                           : jogo.GolForaReal !== undefined ? jogo.GolCasaReal
+                           : jogo.GolCasaRes  !== undefined ? jogo.GolCasaRes
+                           : jogo.golCasaReal !== undefined ? jogo.golCasaReal
+                           : jogo.golCasaRes;
 
-            // Só processa jogos da Fase de Grupos que possuem resultado definido (não nulo/vazio)
-            if (fase === "Grupos" && grupo && gCasaRaw !== undefined && gCasaRaw !== null && gCasaRaw !== "" && gForaRaw !== undefined && gForaRaw !== null && gForaRaw !== "") {
-                
-                const gCasa = parseInt(gCasaRaw);
-                const gFora = parseInt(gForaRaw);
+            const gForaRaw = jogo.GolForaReal !== undefined ? jogo.GolForaReal
+                           : jogo.GolForaRes  !== undefined ? jogo.GolForaRes
+                           : jogo.golForaReal !== undefined ? jogo.golForaReal
+                           : jogo.golForaRes;
 
-                // Inicializa os times no objeto acumulador se eles ainda não existirem
-                if (!tabelaGeral[timeCasa]) tabelaGeral[timeCasa] = { nome: timeCasa, grupo: grupo, pts: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
-                if (!tabelaGeral[timeFora]) tabelaGeral[timeFora] = { nome: timeFora, grupo: grupo, pts: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
+            if (!fase || fase !== "Grupos" || !grupo || !timeCasa || !timeFora) return;
 
-                // Atualiza contagem de jogos e gols pró/contra
-                tabelaGeral[timeCasa].j++;
-                tabelaGeral[timeFora].j++;
-                tabelaGeral[timeCasa].gp += gCasa;
-                tabelaGeral[timeCasa].gc += gFora;
-                tabelaGeral[timeFora].gp += gFora;
-                tabelaGeral[timeFora].gc += gCasa;
+            // Garante que o time aparece na tabela mesmo sem resultado ainda
+            if (!tabelaGeral[timeCasa]) tabelaGeral[timeCasa] = { nome: timeCasa, grupo, pts: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
+            if (!tabelaGeral[timeFora]) tabelaGeral[timeFora] = { nome: timeFora, grupo, pts: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
 
-                // Distribui os pontos de Vitória/Empate/Derrota (Critério base)
-                if (gCasa > gFora) {
-                    tabelaGeral[timeCasa].pts += 3;
-                    tabelaGeral[timeCasa].v++; // +1 Vitória para o dono da casa (Critério de Desempate 2)
-                    tabelaGeral[timeFora].d++;
-                } else if (gCasa < gFora) {
-                    tabelaGeral[timeFora].pts += 3;
-                    tabelaGeral[timeFora].v++; // +1 Vitória para o visitante (Critério de Desempate 2)
-                    tabelaGeral[timeCasa].d++;
-                } else {
-                    tabelaGeral[timeCasa].pts += 1;
-                    tabelaGeral[timeFora].pts += 1;
-                    tabelaGeral[timeCasa].e++;
-                    tabelaGeral[timeFora].e++;
-                }
+            // Só computa resultado se o placar estiver preenchido
+            const temResultado = gCasaRaw !== undefined && gCasaRaw !== null && gCasaRaw !== ""
+                              && gForaRaw !== undefined && gForaRaw !== null && gForaRaw !== "";
+            if (!temResultado) return;
 
-                // Atualiza o Saldo de Gols (Critério de Desempate 3)
-                tabelaGeral[timeCasa].sg = tabelaGeral[timeCasa].gp - tabelaGeral[timeCasa].gc;
-                tabelaGeral[timeFora].sg = tabelaGeral[timeFora].gp - tabelaGeral[timeFora].gc;
-            } else if (fase === "Grupos" && grupo) {
-                // Se o jogo ainda não aconteceu, garante que o time apareça na tabela com 0 pontos
-                if (!tabelaGeral[timeCasa]) tabelaGeral[timeCasa] = { nome: timeCasa, grupo: grupo, pts: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
-                if (!tabelaGeral[timeFora]) tabelaGeral[timeFora] = { nome: timeFora, grupo: grupo, pts: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
+            const gCasa = parseInt(gCasaRaw);
+            const gFora = parseInt(gForaRaw);
+            if (isNaN(gCasa) || isNaN(gFora)) return;
+
+            tabelaGeral[timeCasa].j++;
+            tabelaGeral[timeFora].j++;
+            tabelaGeral[timeCasa].gp += gCasa;
+            tabelaGeral[timeCasa].gc += gFora;
+            tabelaGeral[timeFora].gp += gFora;
+            tabelaGeral[timeFora].gc += gCasa;
+
+            if (gCasa > gFora) {
+                tabelaGeral[timeCasa].pts += 3; tabelaGeral[timeCasa].v++;
+                tabelaGeral[timeFora].d++;
+            } else if (gCasa < gFora) {
+                tabelaGeral[timeFora].pts += 3; tabelaGeral[timeFora].v++;
+                tabelaGeral[timeCasa].d++;
+            } else {
+                tabelaGeral[timeCasa].pts += 1; tabelaGeral[timeCasa].e++;
+                tabelaGeral[timeFora].pts += 1; tabelaGeral[timeFora].e++;
             }
+
+            tabelaGeral[timeCasa].sg = tabelaGeral[timeCasa].gp - tabelaGeral[timeCasa].gc;
+            tabelaGeral[timeFora].sg = tabelaGeral[timeFora].gp - tabelaGeral[timeFora].gc;
         });
 
-        // 3. Separa e organiza as seleções por Letra de Grupo
+        // Agrupa por letra de grupo
         const gruposOrganizados = {};
         Object.values(tabelaGeral).forEach(time => {
             if (!gruposOrganizados[time.grupo]) gruposOrganizados[time.grupo] = [];
             gruposOrganizados[time.grupo].push(time);
         });
 
-        // Limpa o estado visual para reinserir as tabelas prontas
         container.innerHTML = "";
 
-        // 4. Cria a estrutura HTML de cada Grupo na Tela
         Object.keys(gruposOrganizados).sort().forEach(letraGrupo => {
-            
-            // Regra Oficial FIFA: Ordena por Pontos descrescente, Vitórias descrescente e Saldo de Gols descrescente
-            const timesOrdenados = gruposOrganizados[letraGrupo].sort((a, b) => {
-                return b.pts - a.pts || b.v - a.v || b.sg - a.sg || b.gp - a.gp;
-            });
+            const timesOrdenados = gruposOrganizados[letraGrupo].sort((a, b) =>
+                b.pts - a.pts || b.v - a.v || b.sg - a.sg || b.gp - a.gp
+            );
 
             const grupoCard = document.createElement("div");
-            grupoCard.className = "grupo-tabela-card"; // Alinhado aos padrões modernos de CSS
+            grupoCard.className = "grupo-tabela-card";
             grupoCard.style.marginBottom = "24px";
-            
+
             let tabelaHTML = `
                 <div class="grupo-header" style="background: var(--bg-card, #1e293b); padding: 12px; border-radius: 8px 8px 0 0; border-bottom: 2px solid var(--primary, #3b82f6);">
                     <strong style="color: #fff; font-size: 1rem;">GRUPO ${letraGrupo}</strong>
@@ -120,11 +142,10 @@ const standings = {
             `;
 
             timesOrdenados.forEach((time, index) => {
-                // Recupera a bandeira configurada no dataFlags (se houver)
                 const flag = (typeof dataFlags !== "undefined" && dataFlags[time.nome]) ? dataFlags[time.nome] : "⚽";
-                
-                // Estilização sutil para o G-2 (Zona de classificação para o mata-mata)
-                const trStyle = index < 2 ? "background: rgba(59, 130, 246, 0.05); border-left: 3px solid #10b981;" : "border-left: 3px solid transparent;";
+                const trStyle = index < 2
+                    ? "background: rgba(59, 130, 246, 0.05); border-left: 3px solid #10b981;"
+                    : "border-left: 3px solid transparent;";
 
                 tabelaHTML += `
                     <tr style="${trStyle} border-bottom: 1px solid #1e293b; color: #e2e8f0;">

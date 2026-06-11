@@ -1206,3 +1206,32 @@ body {
         grid-template-columns: repeat(4, 1fr);
     }
 }
+/* Mini-ranking da Home */
+.quick-rank-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 0.9rem;
+    color: var(--text-primary, #e2e8f0);
+}
+.quick-rank-row--highlight {
+    background: rgba(59, 130, 246, 0.1);
+    border-left: 3px solid #3b82f6;
+}
+.qr-pos    { width: 28px; font-weight: bold; }
+.qr-avatar { font-size: 1.2rem; }
+.qr-name   { flex: 1; font-weight: 500; }
+.qr-pts    { font-size: 0.85rem; color: var(--text-muted, #94a3b8); }
+.qr-pts strong { color: #fff; }
+
+/* Badge Brasil nos cards de jogo */
+.brasil-badge {
+    background: rgba(0, 156, 59, 0.2);
+    color: #00c957;
+    border: 1px solid #00c957;
+}
+.match-card--brasil {
+    border-left: 3px solid #00c957;
+}
