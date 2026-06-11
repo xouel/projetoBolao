@@ -168,27 +168,38 @@
             </section>
 
             <section id="view-ranking" class="view-section hidden">
-                <div class="ranking-tab-container">
-                    <button class="ranking-tab active" data-ranking-type="general">
-                        <i class="fa-solid fa-globe"></i> Ranking Geral
-                    </button>
-                </div>
 
-                <div id="special-expert-card" class="hidden"></div>
+    <div class="section-header" style="margin-bottom: 16px;">
+        <h2>🏆 Painel de Ranking</h2>
+    </div>
 
-                <div class="ranking-leaderboard-card">
-                    <div class="leaderboard-header">
-                        <span class="col-pos">Pos</span>
-                        <span class="col-user">Participante</span>
-                        <span class="col-exact text-center">Acertos</span>
-                        <span class="col-pts text-right">Pts</span>
-                    </div>
-                    
-                    <div id="ranking-list-container" class="leaderboard-rows">
-                        <p class="loading-placeholder">Buscando dados da nuvem...</p>
-                    </div>
-                </div>
-            </section>
+    <div class="ranking-tab-container">
+        <button class="ranking-tab active" data-ranking-type="general">
+            <i class="fa-solid fa-globe"></i>
+            Ranking Geral
+        </button>
+    </div>
+
+    <div id="special-expert-card" class="hidden"></div>
+
+    <div class="ranking-leaderboard-card">
+
+        <div class="leaderboard-header">
+            <span class="col-pos">Pos</span>
+            <span class="col-user">Participante</span>
+            <span class="col-exact text-center">Acertos</span>
+            <span class="col-pts text-right">Pts</span>
+        </div>
+
+        <div id="ranking-list-container" class="leaderboard-rows">
+            <p class="loading-placeholder">
+                Buscando dados da nuvem...
+            </p>
+        </div>
+
+    </div>
+
+</section>
 
             <section id="view-profile" class="view-section hidden">
                 <div class="profile-card-premium">
