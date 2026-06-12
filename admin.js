@@ -1,170 +1,309 @@
 /**
- * STANDINGS.JS - Cálculo e Renderização da Classificação dos Grupos
- * CORRIGIDO: Busca resultados reais do Google Sheets em vez de usar dataMatches local.
+ * ADMIN.JS - Controlador das Funções do Painel Administrativo
  */
-const standings = {
 
-    async fetchAndRender() {
-        const container = document.getElementById("tabelas-grupos-container");
-        if (!container) return;
+// Removido o const duplicado para resolver o erro de SyntaxError
+// O SCRIPT_URL será herdado diretamente do seu arquivo api.js
 
-        container.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--text-muted);">
-            <i class="fa-solid fa-spinner fa-spin"></i> Calculando classificações em tempo real...
-        </div>`;
+const adminState = {
+    isAuthed: false,
+    jogosCarregados: []
+};
+// Vincula os eventos do painel administrativo assim que o script carrega
+document.addEventListener("DOMContentLoaded", () => {
+    admin.bindAdminEvents();
+});
+
+const admin = {
+    
+    bindAdminEvents() {
+        // Botão de Autenticação do Admin
+        const btnAuth = document.getElementById("btn-auth-admin");
+        if (btnAuth) {
+            btnAuth.addEventListener("click", () => this.handleAuthentication());
+        }
+
+        // Troca de abas internas no menu admin (Inserir Resultados vs Ações de Sistema)
+        const tabs = document.querySelectorAll(".admin-tab-btn");
+        tabs.forEach(tab => {
+            tab.addEventListener("click", (e) => {
+                document.querySelectorAll(".admin-tab-btn").forEach(b => b.classList.remove("active"));
+                document.querySelectorAll(".admin-subview").forEach(v => v.classList.add("hidden"));
+                
+                const activeTab = e.currentTarget;
+                activeTab.classList.add("active");
+                
+                const targetId = activeTab.getAttribute("data-admin-target");
+                const targetView = document.getElementById(targetId);
+                if (targetView) targetView.classList.remove("hidden");
+            });
+        });
+
+        // Filtro de mudança de Fase na visualização do Admin
+        const selectFase = document.getElementById("admin-phase-select");
+        if (selectFase) {
+            selectFase.addEventListener("change", () => this.renderAdminMatchesList());
+        }
+
+        // Botão Perigoso: Limpar Tudo
+        const btnWipe = document.getElementById("btn-admin-wipe-all");
+        if (btnWipe) {
+            btnWipe.addEventListener("click", () => this.wipeSystemEntirely());
+        }
+    },
+
+    // Executa a validação da senha do Admin no Google Sheets
+    async handleAuthentication() {
+        const passwordInput = document.getElementById("admin-password");
+        const msgError = document.getElementById("admin-auth-message");
+        if (!passwordInput) return;
+
+        const senha = passwordInput.value.trim();
+        if (!senha) return;
 
         try {
-            // ✅ FIX 1: Busca os jogos COM resultados reais do Google Sheets
-            const url = `${SCRIPT_URL}?action=getResultadosReais`;
-            const resposta = await fetch(url, { method: "GET", mode: "cors", redirect: "follow" });
+            if (msgError) msgError.classList.add("hidden");
+            const btnAuth = document.getElementById("btn-auth-admin");
+            if (btnAuth) btnAuth.innerText = "Acessando...";
+
+            const url = `${SCRIPT_URL}?action=verificarAdmin&senha=${encodeURIComponent(senha)}`;
+
+            // CORREÇÃO: adicionado mode: "cors" e redirect: "follow" para lidar
+            // com o redirect 302 que o Google Apps Script sempre retorna em GETs
+            const resposta = await fetch(url, {
+                method: "GET",
+                mode: "cors",
+                redirect: "follow"
+            });
             const dados = await resposta.json();
 
-            // Se a planilha estiver vazia ou der erro, cai no fallback local
-            const jogosOnline = (dados.success && Array.isArray(dados.jogos) && dados.jogos.length > 0)
-                ? dados.jogos
-                : null;
+            if (dados.success && dados.autorizado) {
+                adminState.isAuthed = true;
+                
+                const authBox = document.getElementById("admin-auth-box");
+                const dashboardArea = document.getElementById("admin-dashboard-area");
+                
+                if (authBox) authBox.classList.add("hidden");
+                if (dashboardArea) dashboardArea.classList.remove("hidden");
+                
+                await this.fetchMatchesForAdmin();
+            } else {
+                if (msgError) {
+                    msgError.innerText = "Senha incorreta! Tente novamente.";
+                    msgError.classList.remove("hidden");
+                }
+                if (btnAuth) btnAuth.innerText = "Verificar Credenciais";
+            }
+        } catch (error) {
+            console.error(error);
+            if (msgError) {
+                msgError.innerText = "Falha ao conectar na API do Google.";
+                msgError.classList.remove("hidden");
+            }
+            const btnAuth = document.getElementById("btn-auth-admin");
+            if (btnAuth) btnAuth.innerText = "Verificar Credenciais";
+        }
+    },
 
-            // Fallback: usa dataMatches local se não tiver dados online ainda
-            const fonteDados = jogosOnline || (typeof dataMatches !== "undefined" ? dataMatches : []);
+    // Puxa os jogos salvos no banco para a memória do Admin
+    async fetchMatchesForAdmin() {
+        try {
+            const url = `${SCRIPT_URL}?action=getResultadosReais`;
+            const resposta = await fetch(url);
+            const dados = await resposta.json();
 
-            if (fonteDados.length === 0) {
-                container.innerHTML = `<p style="text-align:center; padding:20px;">Nenhum dado de jogo encontrado.</p>`;
-                return;
+            if (dados.success) {
+                adminState.jogosCarregados = dados.jogos;
+                
+                if (dados.jogos.length === 0 && typeof dataMatches !== "undefined") {
+                    await this.seedInitialMatchesToDatabase();
+                } else {
+                    this.renderAdminMatchesList();
+                }
+            }
+        } catch (err) {
+            console.error("Erro ao puxar tabela administrativa:", err);
+        }
+    },
+
+    // Força a inserção em lote de todos os jogos fixos da Copa na planilha se ela estiver vazia
+    async seedInitialMatchesToDatabase() {
+        try {
+            if (typeof app !== "undefined") {
+                app.showModal("Carga Inicial", "Alimentando o Google Sheets com os 72 jogos oficiais da Fase de Grupos. Aguarde...", "⚙️");
             }
 
-            this.computeAndRender(fonteDados, container);
+            // Tradução Inteligente: Adapta o formato Maiúsculo do seu data.js para o padrão minúsculo exigido pela API
+            const jogosFormatados = dataMatches.map(j => ({
+                id: j.IDJogo || j.id,
+                fase: j.Fase || j.fase,
+                grupo: j.Grupo || j.grupo || "",
+                timeCasa: j.TimeCasa || j.timeCasa,
+                timeFora: j.TimeFora || j.timeFora
+            }));
+            
+            const resposta = await fetch(SCRIPT_URL, {
+                method: "POST",
+                mode: "cors",
+                redirect: "follow",
+                headers: {
+                    "Content-Type": "text/plain;charset=utf-8"
+                },
+                body: JSON.stringify({
+                    action: "inicializarTabelaJogos",
+                    jogos: jogosFormatados
+                })
+            });
 
+            const dados = await resposta.json();
+            if (dados.success) {
+                if (typeof app !== "undefined") {
+                    app.showModal("Sucesso", "Tabela de jogos gerada online com sucesso!", "✅");
+                }
+                this.fetchMatchesForAdmin();
+            }
+        } catch (e) {
+            console.error("Erro na carga de inicialização:", e);
+        }
+    },
+
+    // Renderiza os cards de partidas com caixas de texto para o admin digitar o placar real
+    renderAdminMatchesList() {
+        const container = document.getElementById("admin-matches-list");
+        if (!container) return;
+
+        const selectPhase = document.getElementById("admin-phase-select");
+        const filtroFase = selectPhase ? selectPhase.value : "groups";
+        
+        container.innerHTML = "";
+
+        const jogosFiltrados = adminState.jogosCarregados.filter(j => {
+            if (filtroFase === "groups") return j.Fase === "Grupos";
+            return j.Fase === filtroFase;
+        });
+
+        if (jogosFiltrados.length === 0) {
+            container.innerHTML = `<p class="loading-placeholder">Nenhum jogo cadastrado para esta fase ainda.</p>`;
+            return;
+        }
+
+        jogosFiltrados.forEach(jogo => {
+            const card = document.createElement("div");
+            const statusStyle = jogo.StatusJogo ? jogo.StatusJogo.toLowerCase() : "pendente";
+            card.className = `match-card ${statusStyle}`;
+            
+            card.innerHTML = `
+                <div class="match-info-header">
+                    <span>CÓDIGO: ${jogo.IDJogo} • GRUPO ${jogo.Grupo || "N/A"}</span>
+                    <span class="match-status-badge ${statusStyle}">${jogo.StatusJogo || "Pendente"}</span>
+                </div>
+                <div class="match-clash-container">
+                    <div class="team-side">
+                        <span class="team-name">${jogo.TimeCasa}</span>
+                    </div>
+                    <div class="score-inputs-core">
+                        <input type="number" class="input-score" id="adm-casa-${jogo.IDJogo}" value="${jogo.GolCasaReal !== undefined ? jogo.GolCasaReal : ""}" min="0" placeholder="0">
+                        <span class="score-divider">×</span>
+                        <input type="number" class="input-score" id="adm-fora-${jogo.IDJogo}" value="${jogo.GolForaReal !== undefined ? jogo.GolForaReal : ""}" min="0" placeholder="0">
+                    </div>
+                    <div class="team-side">
+                        <span class="team-name">${jogo.TimeFora}</span>
+                    </div>
+                </div>
+                <div class="match-card-footer">
+                    <button class="btn-save-guess" onclick="admin.saveOfficialResult('${jogo.IDJogo}')">
+                        <i class="fa-solid fa-square-check"></i> Encerrar e Computar Pontos
+                    </button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    },
+
+    // Envia o placar definitivo/real digitado para a API processar
+    async saveOfficialResult(idJogo) {
+        const inputCasa = document.getElementById(`adm-casa-${idJogo}`);
+        const inputFora = document.getElementById(`adm-fora-${idJogo}`);
+        
+        const golCasa = inputCasa ? inputCasa.value.trim() : "";
+        const golFora = inputFora ? inputFora.value.trim() : "";
+
+        if (golCasa === "" || golFora === "") {
+            if (typeof app !== "undefined") {
+                app.showModal("Atenção", "Por favor, digite o número de gols de ambas as equipes antes de encerrar.", "⚠️");
+            }
+            return;
+        }
+
+        try {
+            if (typeof app !== "undefined") {
+                app.showModal("Salvando", "Computando placar oficial e recalculando o ranking de toda a família...", "⏳");
+            }
+
+            const resposta = await fetch(SCRIPT_URL, {
+                method: "POST",
+                mode: "cors",
+                redirect: "follow",
+                headers: {
+                    "Content-Type": "text/plain;charset=utf-8"
+                },
+                body: JSON.stringify({
+                    action: "atualizarResultadoReal",
+                    idJogo: idJogo,
+                    golCasaReal: parseInt(golCasa),
+                    golForaReal: parseInt(golFora)
+                })
+            });
+
+            const dados = await resposta.json();
+            if (dados.success) {
+                if (typeof app !== "undefined") {
+                    app.showModal("Excelente!", "Placar oficial gravado! As pontuações de todos os perfis já foram atualizadas.", "🎉");
+                }
+                this.fetchMatchesForAdmin();
+                if (typeof app !== "undefined") app.checkSession();
+            }
         } catch (err) {
-            console.error("Erro ao buscar standings:", err);
-            // Em caso de falha na rede, usa os dados locais
-            if (typeof dataMatches !== "undefined") {
-                this.computeAndRender(dataMatches, container);
-            } else {
-                container.innerHTML = `<p style="text-align:center; padding:20px; color: #ef4444;">Erro ao carregar classificação.</p>`;
+            console.error(err);
+            if (typeof app !== "undefined") {
+                app.showModal("Erro", "Não foi possível salvar o placar oficial no servidor.", "❌");
             }
         }
     },
 
-    computeAndRender(jogos, container) {
-        const tabelaGeral = {};
+    // Função Crítica: Reseta o banco de dados online
+    async wipeSystemEntirely() {
+        const confirmacao = confirm("ATENÇÃO FAMÍLIA!\nVocê tem certeza absoluta de que deseja apagar TODOS os usuários cadastrados, TODOS os palpites dados e zerar o campeonato?");
+        if (!confirmacao) return;
 
-        jogos.forEach(jogo => {
-            const fase      = jogo.Fase      || jogo.fase;
-            const grupo     = jogo.Grupo     || jogo.grupo;
-            const timeCasa  = jogo.TimeCasa  || jogo.timeCasa;
-            const timeFora  = jogo.TimeFora  || jogo.timeFora;
-
-            // ✅ FIX 2: Lê GolCasaReal/GolForaReal (nome correto do banco),
-            // com fallback para GolCasaRes/GolForaRes por compatibilidade
-            const gCasaRaw = jogo.GolCasaReal !== undefined ? jogo.GolCasaReal
-                           : jogo.GolForaReal !== undefined ? jogo.GolCasaReal
-                           : jogo.GolCasaRes  !== undefined ? jogo.GolCasaRes
-                           : jogo.golCasaReal !== undefined ? jogo.golCasaReal
-                           : jogo.golCasaRes;
-
-            const gForaRaw = jogo.GolForaReal !== undefined ? jogo.GolForaReal
-                           : jogo.GolForaRes  !== undefined ? jogo.GolForaRes
-                           : jogo.golForaReal !== undefined ? jogo.golForaReal
-                           : jogo.golForaRes;
-
-            if (!fase || fase !== "Grupos" || !grupo || !timeCasa || !timeFora) return;
-
-            // Garante que o time aparece na tabela mesmo sem resultado ainda
-            if (!tabelaGeral[timeCasa]) tabelaGeral[timeCasa] = { nome: timeCasa, grupo, pts: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
-            if (!tabelaGeral[timeFora]) tabelaGeral[timeFora] = { nome: timeFora, grupo, pts: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
-
-            // Só computa resultado se o placar estiver preenchido
-            const temResultado = gCasaRaw !== undefined && gCasaRaw !== null && gCasaRaw !== ""
-                              && gForaRaw !== undefined && gForaRaw !== null && gForaRaw !== "";
-            if (!temResultado) return;
-
-            const gCasa = parseInt(gCasaRaw);
-            const gFora = parseInt(gForaRaw);
-            if (isNaN(gCasa) || isNaN(gFora)) return;
-
-            tabelaGeral[timeCasa].j++;
-            tabelaGeral[timeFora].j++;
-            tabelaGeral[timeCasa].gp += gCasa;
-            tabelaGeral[timeCasa].gc += gFora;
-            tabelaGeral[timeFora].gp += gFora;
-            tabelaGeral[timeFora].gc += gCasa;
-
-            if (gCasa > gFora) {
-                tabelaGeral[timeCasa].pts += 3; tabelaGeral[timeCasa].v++;
-                tabelaGeral[timeFora].d++;
-            } else if (gCasa < gFora) {
-                tabelaGeral[timeFora].pts += 3; tabelaGeral[timeFora].v++;
-                tabelaGeral[timeCasa].d++;
-            } else {
-                tabelaGeral[timeCasa].pts += 1; tabelaGeral[timeCasa].e++;
-                tabelaGeral[timeFora].pts += 1; tabelaGeral[timeFora].e++;
+        try {
+            if (typeof app !== "undefined") {
+                app.showModal("Limpando", "Acessando o Google Sheets para apagar dados e redefinir o bolão...", "⚡");
             }
 
-            tabelaGeral[timeCasa].sg = tabelaGeral[timeCasa].gp - tabelaGeral[timeCasa].gc;
-            tabelaGeral[timeFora].sg = tabelaGeral[timeFora].gp - tabelaGeral[timeFora].gc;
-        });
-
-        // Agrupa por letra de grupo
-        const gruposOrganizados = {};
-        Object.values(tabelaGeral).forEach(time => {
-            if (!gruposOrganizados[time.grupo]) gruposOrganizados[time.grupo] = [];
-            gruposOrganizados[time.grupo].push(time);
-        });
-
-        container.innerHTML = "";
-
-        Object.keys(gruposOrganizados).sort().forEach(letraGrupo => {
-            const timesOrdenados = gruposOrganizados[letraGrupo].sort((a, b) =>
-                b.pts - a.pts || b.v - a.v || b.sg - a.sg || b.gp - a.gp
-            );
-
-            const grupoCard = document.createElement("div");
-            grupoCard.className = "grupo-tabela-card";
-            grupoCard.style.marginBottom = "24px";
-
-            let tabelaHTML = `
-                <div class="grupo-header" style="background: var(--bg-card, #1e293b); padding: 12px; border-radius: 8px 8px 0 0; border-bottom: 2px solid var(--primary, #3b82f6);">
-                    <strong style="color: #fff; font-size: 1rem;">GRUPO ${letraGrupo}</strong>
-                </div>
-                <div style="overflow-x: auto; background: var(--bg-card, #1e293b); border-radius: 0 0 8px 8px; padding: 8px;">
-                    <table style="width: 100%; border-collapse: collapse; text-align: center; font-size: 0.85rem;">
-                        <thead>
-                            <tr style="color: var(--text-muted, #94a3b8); border-bottom: 1px solid #334155;">
-                                <th style="padding: 8px 4px; width: 40px;">Pos</th>
-                                <th style="padding: 8px 4px; text-align: left;">Seleção</th>
-                                <th style="padding: 8px 4px; width: 35px; color: #fff;">P</th>
-                                <th style="padding: 8px 4px; width: 35px;">J</th>
-                                <th style="padding: 8px 4px; width: 35px;">V</th>
-                                <th style="padding: 8px 4px; width: 35px;">SG</th>
-                                <th style="padding: 8px 4px; width: 35px;">GP</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-
-            timesOrdenados.forEach((time, index) => {
-                const flag = (typeof dataFlags !== "undefined" && dataFlags[time.nome]) ? dataFlags[time.nome] : "⚽";
-                const trStyle = index < 2
-                    ? "background: rgba(59, 130, 246, 0.05); border-left: 3px solid #10b981;"
-                    : "border-left: 3px solid transparent;";
-
-                tabelaHTML += `
-                    <tr style="${trStyle} border-bottom: 1px solid #1e293b; color: #e2e8f0;">
-                        <td style="padding: 10px 4px; font-weight: bold; color: ${index < 2 ? '#10b981' : 'inherit'};">${index + 1}º</td>
-                        <td style="padding: 10px 4px; text-align: left; font-weight: 500;">
-                            <span style="margin-right: 6px;">${flag}</span>${time.nome}
-                        </td>
-                        <td style="padding: 10px 4px; font-weight: bold; color: #fff;">${time.pts}</td>
-                        <td style="padding: 10px 4px;">${time.j}</td>
-                        <td style="padding: 10px 4px;">${time.v}</td>
-                        <td style="padding: 10px 4px; color: ${time.sg > 0 ? '#10b981' : time.sg < 0 ? '#ef4444' : 'inherit'}">${time.sg > 0 ? '+' + time.sg : time.sg}</td>
-                        <td style="padding: 10px 4px; color: var(--text-muted);">${time.gp}</td>
-                    </tr>
-                `;
+            const resposta = await fetch(SCRIPT_URL, {
+                method: "POST",
+                mode: "cors",
+                redirect: "follow",
+                headers: {
+                    "Content-Type": "text/plain;charset=utf-8"
+                },
+                body: JSON.stringify({ action: "limparSistemaCompleto" })
             });
 
-            tabelaHTML += `</tbody></table></div>`;
-            grupoCard.innerHTML = tabelaHTML;
-            container.appendChild(grupoCard);
-        });
+            const dados = await resposta.json();
+            if (dados.success) {
+                if (typeof app !== "undefined") {
+                    app.showModal("Bolão Resetado", "O sistema foi limpo com sucesso! Os celulares de todos serão desconectados.", "🧼");
+                }
+                setTimeout(() => {
+                    if (typeof app !== "undefined") app.logout();
+                }, 1500);
+            }
+        } catch (e) {
+            if (typeof app !== "undefined") {
+                app.showModal("Erro", "Falha crítica de comunicação para reset de dados.", "❌");
+            }
+        }
     }
 };
